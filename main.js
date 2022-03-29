@@ -1,164 +1,190 @@
-let width = 500;
-let height = 500;
-let x = 250;
-let y = 250;
-let per_frame = 120;
-let go_left = false;
-let go_right = false;
-let go_top = false;
-let go_bottom = false;
-let moving_speed = 80;
-let moving_interval = null;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-const circles = [];
-function Circle(x,y,r){
-    this.x = x;
-    this.y = y;
-    this.r = r;
-    this.deg = 0;
-    this.crash = true;
-}
+let brickRowCount = 4;
+let brickColumnCount = 7;
+let brickWidth = 70;
+let brickHeight = 20;
+let colorSet = ['red','blue','green'];
+let colorIdx= 0;
+let brickCount = brickRowCount*brickColumnCount;
 
-let circle1 = new Circle(250,250,25);
-let circle2 = new Circle(100,100,25);
-let circle3 = new Circle(400,400,25);
-circles.push(circle1);
-circles.push(circle2);
-circles.push(circle3);
-
-function render() {
-    var canvas = document.getElementById('canvas');
-    if (canvas.getContext) {
-        var ctx = canvas.getContext('2d');
-
-        ctx.clearRect(0,0,width,height); // 캔버스를 비운다
-
-        for(c of circles){
-            var cp = new Path2D();
-            cp.arc(c.x, c.y, c.r, 0, 2 * Math.PI);
-            ctx.fill(cp);
-        }
-        
+var bricks = [];
+for(var c=0; c<brickColumnCount; c++) {
+    bricks[c] = [];
+    for(var r=0; r<brickRowCount; r++) {
+        bricks[c][r] = { x: 0, y: 0, color : colorSet[colorIdx++]};
+        if(colorIdx >= colorSet.length) colorIdx = 0;
     }
 }
 
-setInterval(() => {
-    render();
-}, 1/per_frame);
-
-render();
-
-
-setInterval(()=>{
-    for(c of circles){
-
-        if(width <= c.x +25){
-            c.crash = true;
+function drawBricks() {
+    for(var c=0; c<brickColumnCount; c++) {
+        for(var r=0; r< bricks[c].length; r++) {
+            bricks[c][r].x = c*(brickWidth) ;
+            bricks[c][r].y = r*(brickHeight) ;
+            ctx.beginPath();
+            ctx.rect(bricks[c][r].x, bricks[c][r].y, brickWidth, brickHeight);
+            ctx.fillStyle = bricks[c][r].color;
+            ctx.fill();
+            ctx.closePath();
         }
-        if(0 >= c.y - 25){
-            c.crash = true;
-        }    
-        if(0 >= c.x - 25){
-            c.crash = true;
-        }    
-        if(height <= c.y + 25){
-            c.crash = true;
-        }    
-
-        // const x1 = circle1.x;
-        // const y1 = circle1.y;
-        // const x2 = circle2.x;
-        // const y2 = circle2.y;
-        // const x3 = circle3.x;
-        // const y3 = circle3.y;
-        // const r12 = Math.sqrt((Math.max(x1,x2) - Math.min(x1,x2))^2 + (Math.max(y1,y2) - Math.min(y1,y2))^2);
-        // if(r12 <= 50){
-        //     circle1.crash = true;
-        //     console.log(r12,"crash");
-        // }
-        // const r13 = Math.sqrt((Math.max(x1,x3) - Math.min(x1,x3))^2 + (Math.max(y1,y3) - Math.min(y1,y3))^2);
-        // if(r13 <= 50){
-        //     circle1.crash = true;
-        //     console.log("crash");
-        // }
-
-        if(c.crash){
-            c.deg = Math.random() * 360;
-            c.deg = c.deg * (Math.floor(Math.random()*2) == 1 ? 1 : -1);
-            c.crash = false;
-        }
-        const radian = c.deg * (Math.PI / 180);
-        c.x = c.x + (1 * Math.cos(radian));
-        c.y = c.y + (1 * Math.sin(radian));
     }
-},1/80);
+}
+
+function collisionDetection(){
+    for(var c=0; c<brickColumnCount; c++) {
+        for(var r=0; r<bricks[c].length; r++) {
+            var b = bricks[c][r];
+            if(x >= b.x && x <= b.x+brickWidth && (y-ballRadius <= b.y+brickHeight && y+ballRadius >= b.y)){
+                bricks[c].splice(r,1);
+                brickCount--;
+                return 'y';
+            } else if(y >= b.y && y <= b.y+brickHeight && (x + ballRadius >= b.x && x-ballRadius < b.x+brickWidth)){
+                bricks[c].splice(r,1);
+                brickCount--
+                return 'x';
+            }
+        }
+    }
+    return 'none';
+}
+
+let x = canvas.width/2;
+let y = canvas.height-30;
+let ballRadius = 10;
+let dx = 1;
+let dy = -1;
+
+function drawBall(){
+    ctx.beginPath();
+    ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+}
+
+let paddleWidth = 75;
+let paddleHeight = 10;
+let paddleX = canvas.height/2 -paddleWidth/2;
+let paddleY = canvas.height-paddleHeight;
+let leftPressed = false;
+let rightPressed = false;
+let paddleDx = 3;
 
 document.addEventListener('keydown',(e)=>{
-    const key = e.key;
-    if(key == 'd'){
-        go_right = true;
+    if(e.keyCode == 39){
+        rightPressed = true;
+    } else if(e.keyCode == 37){
+        leftPressed = true;
     }
-    if(key == 'w'){
-        go_top = true;
-    }
-    if(key == 'a'){
-        go_left = true;
-    }
-    if(key == 's'){
-        go_bottom = true;
-    }
-
-    if(go_right || go_top || go_left || go_bottom){
-        if(!moving_interval){
-            moving_interval = setInterval(() => {
-                if(go_right){
-                    if(width > x +25){
-                        x += 1;
-                    }
-                }    
-                if(go_top){
-                    if(0 < y - 25){
-                        y -= 1;
-                    }    
-                }    
-                if(go_left){
-                    if(0 < x - 25){
-                        x -= 1;
-                    }    
-                }    
-                if(go_bottom){
-                    if(height > y + 25){
-                        y += 1;
-                    }    
-                }    
-            }, 1/moving_speed);
-        }
-    }
-
 });
-
 document.addEventListener('keyup',(e)=>{
-    const key = e.key;
-    if(key == 'd'){
-        go_right = false;
+    if(e.keyCode == 39){
+        rightPressed = false;
+    } else if(e.keyCode == 37){
+        leftPressed = false;
     }
-    if(key == 'w'){
-        go_top = false;
-    }
-    if(key == 'a'){
-        go_left = false;
-    }
-    if(key == 's'){
-        go_bottom = false;
-    }
+});
 
-    if(!go_right && !go_top && !go_left && !go_bottom){
-        if(moving_interval){
-            clearInterval(moving_interval);
-            moving_interval = null;
+
+function drawPaddle(){
+    ctx.beginPath();
+    ctx.rect(paddleX, paddleY, paddleWidth, paddleHeight);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+}
+function ballMoving(){
+    if(x + ballRadius >= canvas.width || x-ballRadius <= 0){ // 좌우 벽
+        dx = -dx;
+    }
+    if(y-ballRadius <= 0){ // 윗 벽
+        dy = -dy;
+    } else if (y+ballRadius >= paddleY && x >= paddleX && x <= paddleX + paddleWidth){ // 막대를 만나면
+        dy = -dy;
+    } else if(y+ballRadius >= canvas.height){ // 바닥을 만나면
+        lose();
+    } else { // 다 아니면
+        const col = collisionDetection();
+        if(col == 'y'){
+            dy = -dy;
+        } else if(col =='x'){
+            dx = -dx;
         }
     }
 
-});
+    
+    x += dx;
+    y += dy;
+}
 
+function paddleMoving(){
+    if(rightPressed){
+        if( paddleX+paddleWidth+paddleDx <= canvas.width){
+            paddleX += paddleDx;
+        } else {
+            paddleX = canvas.width - paddleWidth;
+        }
+    } else if(leftPressed){
+        if(paddleX-paddleDx >= 0){
+            paddleX -= paddleDx;
+        } else {
+            paddleX = 0;
+        }
+    }
+}
+
+function draw(){
+
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        drawBall();
+        drawPaddle();
+        drawBricks();
+        if(brickCount <= 25 && brickCount > 18){
+            setBallTime(1.2);
+        } else if(brickCount <= 18 && brickCount > 13){
+            setBallTime(1.4);
+        } else if(brickCount < 13 && brickCount > 5){
+            setBallTime(1.6);
+        } else if(brickCount <= 5 && brickCount > 0){
+            setBallTime(1.8);
+        } else if(brickCount == 0){
+            win();
+        }
+
+}
+
+function lose(){
+    clearInterval(drawIntv);
+    clearInterval(ballIntv);
+    clearInterval(padIntv);
+    alert('패배!');
+    document.location.reload();
+}
+
+function win(){
+    clearInterval(drawIntv);
+    clearInterval(ballIntv);
+    clearInterval(padIntv);
+    alert('승리하셨습니다.');
+    document.location.reload();
+}
+
+var drawIntv = setInterval(draw, 1000/60);
+var ballIntv = setInterval(ballMoving, 5);
+var padIntv = setInterval(paddleMoving, 10);
+
+function setBallTime(time){
+    if(dx < 0){
+        dx = -time;
+    } else{
+        dx = time;
+    }
+    if(dy < 0){
+        dy = -time;
+    } else{
+        dy = time;
+    }
+}
 
